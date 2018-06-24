@@ -22,7 +22,7 @@ float DS18B20::Value() const {
 }
 
 void DS18B20::Update() {
-  auto newValue = sensors->getTempC(address);
-  if(newValue > -100.0 && newValue < 100.0)
+  float newValue = sensors->getTempC(address);
+  if((newValue > -100.0f) && (newValue < 100.0f))
     value = newValue;
 }

@@ -86,6 +86,7 @@ void loop() {
   mqtt.loop();
   app->Update();
 
+
   if(!ntpSync) {
     if(timeClient.update()) {
       ntpSync = true;
@@ -98,48 +99,50 @@ void loop() {
     auto fridgeValue = app->FridgeTemperature();
     s = String(fridgeValue) + String("C");
     button0->SetText(s.c_str());
-    Serial.println("TEMPERATURE0 : " + s);
     mqtt.publish("/jfbrew/temperature/fridge", String(fridgeValue));
 
     auto beerValue = app->BeerTemperature();
     s = String(beerValue) + String("C");
     button1->SetText(s.c_str());
-    Serial.println("TEMPERATURE1 : " + s);
     mqtt.publish("/jfbrew/temperature/beer", String(beerValue));
 
     auto roomValue = app->RoomTemperature();
     s = String(roomValue) + String("C");
     button2->SetText(s.c_str());
-    Serial.println("TEMPERATURE2 : " + s);
     mqtt.publish("/jfbrew/temperature/room", String(roomValue));
 
-    if(app->HeaterState() == Actuators::Relays::States::Open)
+    if(app->HeaterRelayState() == Actuators::Relays::States::Open)
       mqtt.publish("/jfbrew/relay/heater/state", "0");
     else
       mqtt.publish("/jfbrew/relay/heater/state", "1");
 
     if(!button3->AreControlsEnabled()) {
-      s = Actuators::Relays::ToString(app->HeaterState()).c_str();
+      s = Actuators::Relays::ToString(app->HeaterRelayState()).c_str();
       button3->SetText(s.c_str());
     }
 
-    if(app->CoolerState() == Actuators::Relays::States::Open)
+    if(app->CoolerRelayState() == Actuators::Relays::States::Open)
       mqtt.publish("/jfbrew/relay/cooler/state", "0");
     else
       mqtt.publish("/jfbrew/relay/cooler/state", "1");
 
+    mqtt.publish("/jfbrew/relay/cooler/pwm_value", String(app->CoolerPwm()));
+    mqtt.publish("/jfbrew/relay/heater/pwm_value", String(app->HeaterPwm()));
+    mqtt.publish("/jfbrew/relay/cooler/pwm_state", String(app->IsCoolerPwmActivated()));
+    mqtt.publish("/jfbrew/relay/heater/pwm_state", String(app->IsHeaterPwmActivated()));
+
     if(!button4->AreControlsEnabled()) {
-      s = Actuators::Relays::ToString(app->CoolerState()).c_str();
+      s = Actuators::Relays::ToString(app->CoolerRelayState()).c_str();
       button4->SetText(s.c_str());
     }
 
-    if(app->FanState() == Actuators::Relays::States::Open)
+    if(app->FanRelayState() == Actuators::Relays::States::Open)
       mqtt.publish("/jfbrew/relay/fan/state", "0");
     else
       mqtt.publish("/jfbrew/relay/fan/state", "1");
 
     if(!button5->AreControlsEnabled()) {
-      s = Actuators::Relays::ToString(app->FanState()).c_str();
+      s = Actuators::Relays::ToString(app->FanRelayState()).c_str();
       button5->SetText(s.c_str());
     }
 
@@ -153,6 +156,7 @@ void loop() {
   }
 
   if((loopCount % 100) == 0) {
+
     auto rssi =WiFi.RSSI();
     if(rssi >= -55) {
       topBar->SetWifiStatus(StatusBar::WifiStatuses::Full);
@@ -211,6 +215,11 @@ void ConnectWifi() {
   mqtt.subscribe("/jfbrew/relay/cooler/command");
   mqtt.subscribe("/jfbrew/relay/heater/command");
   mqtt.subscribe("/jfbrew/relay/fan/command");
+
+  mqtt.subscribe("/jfbrew/relay/heater/pwm_command");
+  mqtt.subscribe("/jfbrew/relay/cooler/pwm_command");
+  mqtt.subscribe("/jfbrew/relay/heater/pwm_consign");
+  mqtt.subscribe("/jfbrew/relay/cooler/pwm_consign");
 
   if(config.IsTemperatureSensorStubbed()) {
     mqtt.subscribe("/jfbrew/temperature/fridge/stub");
@@ -306,12 +315,12 @@ void InitUI() {
   });
 
   button3->SetApplyCallback([&buttonState](UpDownButton* w) {
-    app->HeaterState(buttonState);
+    app->HeaterRelayState(buttonState);
     return false;
   });
 
   button3->SetCancelCallback([&buttonState](UpDownButton* w) {
-    buttonState = app->HeaterState();
+    buttonState = app->HeaterRelayState();
     w->SetText(Actuators::Relays::ToString(buttonState).c_str());
     return true;
   });
@@ -336,12 +345,12 @@ void InitUI() {
   });
 
   button4->SetApplyCallback([&buttonState](UpDownButton* w) {
-    app->CoolerState(buttonState);
+    app->CoolerRelayState(buttonState);
     return false;
   });
 
   button4->SetCancelCallback([&buttonState](UpDownButton* w) {
-    buttonState = app->CoolerState();
+    buttonState = app->CoolerRelayState();
     w->SetText(Actuators::Relays::ToString(buttonState).c_str());
     return true;
   });
@@ -367,12 +376,12 @@ void InitUI() {
   });
 
   button5->SetApplyCallback([&buttonState](UpDownButton* w) {
-    app->FanState(buttonState);
+    app->FanRelayState(buttonState);
     return false;
   });
 
   button5->SetCancelCallback([&buttonState](UpDownButton* w) {
-    buttonState = app->FanState();
+    buttonState = app->FanRelayState();
     w->SetText(Actuators::Relays::ToString(buttonState).c_str());
     return true;
   });
@@ -385,21 +394,21 @@ void mqttMessageReceived(String &topic, String &payload) {
   Serial.println("MQTT message received : " + topic + " - " + payload);
   if(topic == "/jfbrew/relay/cooler/command") {
     if(payload == "0") {
-      app->CoolerState(Actuators::Relays::States::Open);
+      app->CoolerRelayState(Actuators::Relays::States::Open);
     } else if(payload == "1") {
-      app->CoolerState(Actuators::Relays::States::Closed);
+      app->CoolerRelayState(Actuators::Relays::States::Closed);
     }
   } else if(topic == "/jfbrew/relay/heater/command") {
     if(payload == "0") {
-      app->HeaterState(Actuators::Relays::States::Open);
+      app->HeaterRelayState(Actuators::Relays::States::Open);
     } else if(payload == "1") {
-      app->HeaterState(Actuators::Relays::States::Closed);
+      app->HeaterRelayState(Actuators::Relays::States::Closed);
     }
   } else if(topic == "/jfbrew/relay/fan/command") {
     if(payload == "0") {
-      app->FanState(Actuators::Relays::States::Open);
+      app->FanRelayState(Actuators::Relays::States::Open);
     } else if(payload == "1") {
-      app->FanState(Actuators::Relays::States::Closed);
+      app->FanRelayState(Actuators::Relays::States::Closed);
     }
   } else if(topic == "/jfbrew/temperature/fridge/stub") {
     app->SetStubFridgeTemperature(payload.toFloat());
@@ -407,5 +416,23 @@ void mqttMessageReceived(String &topic, String &payload) {
     app->SetStubBeerTemperature(payload.toFloat());
   } else if(topic == "/jfbrew/temperature/room/stub") {
     app->SetStubRoomTemperature(payload.toFloat());
+  } else if(topic == "/jfbrew/relay/cooler/pwm_command") {
+    if(payload == "0") {
+      app->ActivateCoolerPwm(false);
+    } else if(payload == "1") {
+      app->ActivateCoolerPwm(true);
+    }
+  } else if(topic == "/jfbrew/relay/heater/pwm_command") {
+    if(payload == "0") {
+      app->ActivateHeaterPwm(false);
+    } else if(payload == "1") {
+      app->ActivateHeaterPwm(true);
+    }
+  } else if(topic == "/jfbrew/relay/heater/pwm_consign") {
+    Serial.println("Heater PWM : " + String(payload.toInt()));
+    app->HeaterPwm(payload.toInt());
+  } else if(topic == "/jfbrew/relay/cooler/pwm_consign") {
+    app->CoolerPwm(payload.toInt());
   }
+
 }

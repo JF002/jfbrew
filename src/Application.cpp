@@ -8,6 +8,8 @@
 #include <OneWire.h>
 #include <DallasTemperature.h> // WARNING include this one only once in headers!
 
+#include "Devices/Actuators/PwmRelay.h"
+
 using namespace Codingfield::Brew;
 
 Application::Application(const Configuration& configuration) : configuration{configuration} {
@@ -23,6 +25,9 @@ void Application::Update() {
   if(!configuration.IsTemperatureSensorStubbed()) {
     tempSensorBus->Update();
   }
+
+  heaterPwmRelay->Update();
+  coolerPwmRelay->Update();
 /*
   if(beerTempSensor->Value() < 22.0f) {
     heaterRelay->State(Actuators::Relays::States::Closed);
@@ -76,6 +81,19 @@ void Application::InitHW() {
     roomTempSensor = new Sensors::Temperature::DS18B20(temperatureSensors, 2, addr);
     tempSensorBus->Add(static_cast<Sensors::Temperature::DS18B20*>(roomTempSensor));
   }
+
+  coolerPwmRelay = new Actuators::PwmRelay(coolerRelay, Relays::States::Open, Relays::States::Closed);
+  coolerPwmRelay->Period(1200 * 100);
+  coolerPwmRelay->MinimumActivatedTime(120 * 100);
+  coolerPwmRelay->MinimumIdleTime(180 * 100);
+  coolerPwmRelay->Consign(600 * 100);
+  //pwmRelay->Activate();
+
+  heaterPwmRelay = new Actuators::PwmRelay(heaterRelay, Relays::States::Open, Relays::States::Closed);
+  heaterPwmRelay->Period(4 * 100);
+  heaterPwmRelay->MinimumActivatedTime(0 * 100);
+  heaterPwmRelay->MinimumIdleTime(0 * 100);
+  heaterPwmRelay->Consign(2 * 100);
 }
 
 float Application::FridgeTemperature() const {
@@ -109,26 +127,64 @@ void Application::SetStubRoomTemperature(float t) {
 }
 
 
-Actuators::Relays::States Application::CoolerState() const {
+Actuators::Relays::States Application::CoolerRelayState() const {
   return coolerRelay->State();
 }
 
-Actuators::Relays::States Application::HeaterState() const {
+Actuators::Relays::States Application::HeaterRelayState() const {
   return heaterRelay->State();
 }
 
-Actuators::Relays::States Application::FanState() const {
+Actuators::Relays::States Application::FanRelayState() const {
   return fanRelay->State();
 }
 
-void Application::CoolerState(Actuators::Relays::States state) {
+void Application::CoolerRelayState(Actuators::Relays::States state) {
   coolerRelay->State(state);
 }
 
-void Application::HeaterState(Actuators::Relays::States state) {
+void Application::HeaterRelayState(Actuators::Relays::States state) {
   heaterRelay->State(state);
 }
 
-void Application::FanState(Actuators::Relays::States state){
+void Application::FanRelayState(Actuators::Relays::States state){
   fanRelay->State(state);
+}
+
+void Application::CoolerPwm(uint32_t p) {
+  coolerPwmRelay->Consign(p);
+}
+
+void Application::HeaterPwm(uint32_t p) {
+  heaterPwmRelay->Consign(p);
+}
+
+uint32_t Application::CoolerPwm() const {
+  return coolerPwmRelay->Consign();
+}
+
+uint32_t Application::HeaterPwm() const {
+  return heaterPwmRelay->Consign();
+}
+
+void Application::ActivateCoolerPwm(bool activate) {
+  if(activate)
+    coolerPwmRelay->Activate();
+  else
+    coolerPwmRelay->Deactivate();
+}
+
+void Application::ActivateHeaterPwm(bool activate) {
+  if(activate)
+    heaterPwmRelay->Activate();
+  else
+    heaterPwmRelay->Deactivate();
+}
+
+bool Application::IsHeaterPwmActivated() const {
+  return heaterPwmRelay->IsActivated();
+}
+
+bool Application::IsCoolerPwmActivated() const {
+  return coolerPwmRelay->IsActivated();
 }

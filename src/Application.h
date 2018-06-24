@@ -8,6 +8,7 @@ class DallasTemperature;
 namespace Codingfield {
   namespace Brew {
     namespace Actuators {
+      class PwmRelay;
       namespace Relays {
         class Relay;
       }
@@ -34,13 +35,25 @@ namespace Codingfield {
         void SetStubBeerTemperature(float t);
         void SetStubRoomTemperature(float t);
 
-        Actuators::Relays::States CoolerState() const;
-        Actuators::Relays::States HeaterState() const;
-        Actuators::Relays::States FanState() const;
+        Actuators::Relays::States CoolerRelayState() const;
+        Actuators::Relays::States HeaterRelayState() const;
+        Actuators::Relays::States FanRelayState() const;
 
-        void CoolerState(Actuators::Relays::States state);
-        void HeaterState(Actuators::Relays::States state);
-        void FanState(Actuators::Relays::States state);
+        void CoolerRelayState(Actuators::Relays::States state);
+        void HeaterRelayState(Actuators::Relays::States state);
+        void FanRelayState(Actuators::Relays::States state);
+
+        void CoolerPwm(uint32_t p);
+        void HeaterPwm(uint32_t p);
+
+        uint32_t CoolerPwm() const;
+        uint32_t HeaterPwm() const;
+
+        void ActivateCoolerPwm(bool activate);
+        void ActivateHeaterPwm(bool activate);
+
+        bool IsCoolerPwmActivated() const;
+        bool IsHeaterPwmActivated() const;
 
 
       private:
@@ -53,6 +66,8 @@ namespace Codingfield {
         Actuators::Relays::Relay* heaterRelay;
         Actuators::Relays::Relay* fanRelay;
 
+        Actuators::PwmRelay* coolerPwmRelay;
+        Actuators::PwmRelay* heaterPwmRelay;
 
         Sensors::Temperature::TemperatureSensor* fridgeTempSensor;
         Sensors::Temperature::TemperatureSensor* beerTempSensor;

@@ -13,8 +13,10 @@ void PwmRelay::Update() {
 
   if(value < period)
     value++;
-  else
+  else {
     value = 0;
+    consign = newConsign;
+  }
 
   Relays::States targetState;
   Relays::States currentState = actualRelay->State();
@@ -69,7 +71,7 @@ uint32_t PwmRelay::Period() const {
 }
 
 void PwmRelay::Consign(uint32_t c) {
-  consign = c;
+  newConsign = c;
 }
 
 uint32_t PwmRelay::Consign() const {

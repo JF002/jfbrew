@@ -4,6 +4,7 @@
 
 class OneWire;
 class DallasTemperature;
+class MiniPID;
 
 namespace Codingfield {
   namespace Brew {
@@ -55,8 +56,15 @@ namespace Codingfield {
         bool IsCoolerPwmActivated() const;
         bool IsHeaterPwmActivated() const;
 
+        void BeerSetPoint(float s);
 
-      private:
+      void HeaterKp(float kp);
+
+      void HeaterKi(float ki);
+
+      void HeaterKd(float kd);
+
+    private:
 
         void InitHW();
 
@@ -76,6 +84,10 @@ namespace Codingfield {
 
         OneWire* oneWire;
         DallasTemperature* temperatureSensors;
+        MiniPID* heaterPid;
+
+        uint32_t cpt = 0;
+        float beerSetPoint = 20.0f;
 
     };
   }

@@ -9,6 +9,7 @@
 #include <DallasTemperature.h> // WARNING include this one only once in headers!
 
 #include "Devices/Actuators/PwmRelay.h"
+#include <MiniPID.h>
 
 using namespace Codingfield::Brew;
 
@@ -24,6 +25,12 @@ void Application::Update() {
 
   if(!configuration.IsTemperatureSensorStubbed()) {
     tempSensorBus->Update();
+  }
+
+  if((cpt%100)==0) {
+    std::stringstream ss;
+    auto out = heaterPid->getOutput(fridgeTempSensor->Value(), beerSetPoint);
+    heaterPwmRelay->Consign(out);
   }
 
   heaterPwmRelay->Update();
@@ -44,7 +51,7 @@ void Application::Update() {
     fanRelay->State(Actuators::Relays::States::Open);
   }
   */
-
+  cpt++;
 }
 
 void Application::InitHW() {
@@ -94,6 +101,11 @@ void Application::InitHW() {
   heaterPwmRelay->MinimumActivatedTime(0 * 100);
   heaterPwmRelay->MinimumIdleTime(0 * 100);
   heaterPwmRelay->Consign(2 * 100);
+
+  //heaterPid = new MiniPID(30.0, 1800, 60);
+  heaterPid = new MiniPID(1.0, 0, 0.0);
+  heaterPid->setOutputLimits(0.0, heaterPwmRelay->Period());
+
 }
 
 float Application::FridgeTemperature() const {
@@ -187,4 +199,20 @@ bool Application::IsHeaterPwmActivated() const {
 
 bool Application::IsCoolerPwmActivated() const {
   return coolerPwmRelay->IsActivated();
+}
+
+void Application::BeerSetPoint(float s) {
+  this->beerSetPoint = s;
+}
+
+void Application::HeaterKp(float kp) {
+  heaterPid->setP(kp);
+}
+
+void Application::HeaterKi(float ki) {
+  heaterPid->setI(ki);
+}
+
+void Application::HeaterKd(float kd) {
+  heaterPid->setD(kd);
 }

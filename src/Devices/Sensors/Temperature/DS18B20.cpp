@@ -23,6 +23,11 @@ float DS18B20::Value() const {
 
 void DS18B20::Update() {
   float newValue = sensors->getTempC(address);
-  if((newValue > -100.0f) && (newValue < 100.0f))
+  if((newValue > -100.0f) && (newValue < 100.0f)) {
     value = newValue;
+    Serial.println("Temperature : " + String(value));
+  }
+  else {
+    Serial.println("Temperature : error");
+  }
 }

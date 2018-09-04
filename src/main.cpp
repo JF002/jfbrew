@@ -95,6 +95,7 @@ const char* topic_coolerPwmState = "/jfbrew/relay/cooler/pwm_state";
 const char* topic_heaterPwmState = "/jfbrew/relay/heater/pwm_state";
 const char* topic_fanState = "/jfbrew/relay/fan/state";
 const char* topic_beerSetPoint = "/jfbrew/beer/setpoint";
+
 const char* topic_coolerCommand = "/jfbrew/relay/cooler/command";
 const char* topic_heaterCommand = "/jfbrew/relay/heater/command";
 const char* topic_heaterPwmCommand = "/jfbrew/relay/heater/pwm_command";
@@ -105,6 +106,10 @@ const char* topic_fanCommand = "/jfbrew/relay/fan/command";
 const char* topic_temperatureFridgeStub = "/jfbrew/temperature/fridge/stub";
 const char* topic_temperatureBeerStub = "/jfbrew/temperature/beer/stub";
 const char* topic_temperatureRoomStub = "/jfbrew/temperature/room/stub";
+
+const char* topic_heaterKp = "/jfbrew/temperatureControl/heaterKp";
+const char* topic_heaterKi = "/jfbrew/temperatureControl/heaterKi";
+const char* topic_heaterKd = "/jfbrew/temperatureControl/heaterKd";
 constexpr size_t stringBufferSize = 128;
 char stringBuffer[stringBufferSize];
 
@@ -120,6 +125,7 @@ void loop() {
     }
   }
 
+#if 1
   if((loopCount % 50) == 0) {
     auto fridgeValue = app->FridgeTemperature();
     snprintf(stringBuffer, stringBufferSize, "%.2f%s", fridgeValue, temperatureSymbole);
@@ -177,9 +183,8 @@ void loop() {
     snprintf(stringBuffer, stringBufferSize, "%02d:%02d:%02d", timeClient.getHours(), timeClient.getMinutes(), timeClient.getSeconds());
     topBar->SetDateTime(stringBuffer);
   }
-#if 1
+#endif
   if((loopCount % 100) == 0) {
-
     auto rssi =WiFi.RSSI();
     if(rssi >= -55) {
       topBar->SetWifiStatus(StatusBar::WifiStatuses::Full);
@@ -455,12 +460,17 @@ void mqttMessageReceived(String &topic, String &payload) {
       app->ActivateHeaterPwm(true);
     }
   } else if(topic == topic_heaterPwmConsign) {
-    Serial.println("Heater PWM : " + String(payload.toInt()));
     app->HeaterPwm(payload.toInt());
   } else if(topic == topic_coolerPwmConsign) {
     app->CoolerPwm(payload.toInt());
   } else if(topic == topic_beerSetPoint) {
     app->BeerSetPoint(payload.toFloat());
+  } else if(topic == topic_heaterKp) {
+    app->HeaterKp(payload.toFloat());
+  } else if(topic == topic_heaterKi) {
+    app->HeaterKi(payload.toFloat());
+  } else if(topic == topic_heaterKd) {
+    app->HeaterKd(payload.toFloat());
   }
 
 }

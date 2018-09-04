@@ -18,7 +18,7 @@ namespace Codingfield {
           DallasTemperature* sensors = nullptr;
           uint8_t index = 0;
           uint8_t address[8];
-          float value;
+          float value = 0.0;
         };
       }
     }

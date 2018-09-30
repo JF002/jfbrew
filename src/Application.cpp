@@ -1,3 +1,4 @@
+#include <sstream>
 #include "Application.h"
 #include "Devices/Actuators/Relays/Factory.h"
 
@@ -72,6 +73,7 @@ void Application::InitHW() {
   } else {
     oneWire = new OneWire(configuration.OneWireTemperaturePin());
     temperatureSensors = new DallasTemperature(oneWire);
+    temperatureSensors->setWaitForConversion(false);
     temperatureSensors->begin();
     tempSensorBus = new Temperature::DS18B20Bus(temperatureSensors);
 

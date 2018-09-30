@@ -31,7 +31,7 @@ void DS18B20Bus::Update() {
       if(idlingTime >= timeBetweenConversion) {
         // Request conversion!
         bus->requestTemperatures();
-        Serial.println("DS18B20Bus : requesting Conversion!");
+        //Serial.println("DS18B20Bus : requesting Conversion!");
         idlingTime = 0;
         state = States::ConversionPending;
       }
@@ -44,7 +44,7 @@ void DS18B20Bus::Update() {
           sensor->Update();
         }
 
-        Serial.println("DS18B20Bus : Temperature available!");
+        //Serial.println("DS18B20Bus : Temperature available!");
         waitForConversionTime = 0;
         state = States::Idle;
       }

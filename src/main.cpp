@@ -110,6 +110,7 @@ const char* topic_temperatureRoomStub = "/jfbrew/temperature/room/stub";
 const char* topic_heaterKp = "/jfbrew/temperatureControl/heaterKp";
 const char* topic_heaterKi = "/jfbrew/temperatureControl/heaterKi";
 const char* topic_heaterKd = "/jfbrew/temperatureControl/heaterKd";
+const char* topic_resetPid = "/jfbrew/temperatureControl/resetCmd";
 constexpr size_t stringBufferSize = 128;
 char stringBuffer[stringBufferSize];
 
@@ -118,13 +119,13 @@ void loop() {
   M5.update();
   mqtt.loop();
   app->Update();
-
+/*
   if(!ntpSync) {
     if(timeClient.update()) {
       ntpSync = true;
     }
   }
-
+*/
 #if 1
   if((loopCount % 50) == 0) {
     auto fridgeValue = app->FridgeTemperature();
@@ -222,7 +223,7 @@ void loop() {
   screen->Draw();
 
   loopCount++;
-#endif
+
   delay(10);
 }
 
@@ -257,6 +258,10 @@ void ConnectWifi() {
   }
 
   mqtt.subscribe(topic_beerSetPoint);
+  mqtt.subscribe(topic_heaterKp);
+  mqtt.subscribe(topic_heaterKi);
+  mqtt.subscribe(topic_heaterKd);
+  mqtt.subscribe(topic_resetPid);
 
   mqtt.onMessage(mqttMessageReceived);
   Serial.println("OK");
@@ -471,6 +476,8 @@ void mqttMessageReceived(String &topic, String &payload) {
     app->HeaterKi(payload.toFloat());
   } else if(topic == topic_heaterKd) {
     app->HeaterKd(payload.toFloat());
+  } else if(topic == topic_resetPid) {
+      app->ResetPid();
   }
 
 }

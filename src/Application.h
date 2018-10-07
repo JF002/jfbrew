@@ -64,6 +64,8 @@ namespace Codingfield {
 
       void HeaterKd(float kd);
 
+        void ResetPid();
+
     private:
 
         void InitHW();

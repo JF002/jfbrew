@@ -28,9 +28,11 @@ void Application::Update() {
     tempSensorBus->Update();
   }
 
-  if((cpt%100)==0) {
+  if((cpt%200)==0) {
     std::stringstream ss;
     auto out = heaterPid->getOutput(fridgeTempSensor->Value(), beerSetPoint);
+    //ss << "PID : Consign = " << beerSetPoint << " - Temp : " << fridgeTempSensor->Value() << " - Out = " << out;
+    //Serial.println(ss.str().c_str());
     heaterPwmRelay->Consign(out);
   }
 
@@ -217,4 +219,8 @@ void Application::HeaterKi(float ki) {
 
 void Application::HeaterKd(float kd) {
   heaterPid->setD(kd);
+}
+
+void Application::ResetPid() {
+  heaterPid->reset();
 }

@@ -10,7 +10,7 @@
 #include <DallasTemperature.h> // WARNING include this one only once in headers!
 
 #include "Devices/Actuators/PwmRelay.h"
-#include <MiniPID.h>
+#include "PID/MiniPID.h"
 
 using namespace Codingfield::Brew;
 
@@ -28,10 +28,13 @@ void Application::Update() {
     tempSensorBus->Update();
   }
 
-  if((cpt%200)==0) {
+  if((cpt%100)==0) {
     std::stringstream ss;
-    auto out = heaterPid->getOutput(fridgeTempSensor->Value(), beerSetPoint);
-    //ss << "PID : Consign = " << beerSetPoint << " - Temp : " << fridgeTempSensor->Value() << " - Out = " << out;
+
+
+
+    auto out = heaterPid->getOutput(beerTempSensor->Value(), beerSetPoint);
+      //ss << "PID : Consign = " << beerSetPoint << " - Temp : " << fridgeTempSensor->Value() << " - Out = " << out;
     //Serial.println(ss.str().c_str());
     heaterPwmRelay->Consign(out);
   }
@@ -107,7 +110,7 @@ void Application::InitHW() {
   heaterPwmRelay->Consign(2 * 100);
 
   //heaterPid = new MiniPID(30.0, 1800, 60);
-  heaterPid = new MiniPID(1.0, 0, 0.0);
+  heaterPid = new MiniPID(20.0, 0.2, 20.0);
   heaterPid->setOutputLimits(0.0, heaterPwmRelay->Period());
 
 }

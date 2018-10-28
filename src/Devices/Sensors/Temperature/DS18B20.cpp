@@ -27,14 +27,12 @@ void DS18B20::Update() {
     if((newValue > -100.0f) && (newValue < 100.0f)) {
       value = newValue;
       return;
-      //Serial.println("Temperature : " + String(value));
     }
     else {
-      value = newValue;
-      //Serial.println("Retry");
-      //Serial.println("Temperature : error" + String(newValue));
+      Serial.println("Temperature Retry");
+      delay(1);
     }
   }
   // TODO add performance counter (nbRetries, nbError)
-  //Serial.println("ERROR");
+  Serial.println("Temperature ERROR");
 }

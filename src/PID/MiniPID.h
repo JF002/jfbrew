@@ -29,6 +29,10 @@ public:
 	double getOutput(double);
 	double getOutput(double, double);
 
+    double GetP() const {return P;}
+    double GetI() const {return I;}
+    double GetD() const {return D;}
+
 private:
 	double clamp(double, double, double);
 	bool bounded(double, double, double);

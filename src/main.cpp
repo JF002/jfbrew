@@ -110,6 +110,19 @@ const char* topic_temperatureRoomStub = "/jfbrew/temperature/room/stub";
 const char* topic_heaterKp = "/jfbrew/temperatureControl/heaterKp";
 const char* topic_heaterKi = "/jfbrew/temperatureControl/heaterKi";
 const char* topic_heaterKd = "/jfbrew/temperatureControl/heaterKd";
+const char* topic_heaterKpValue = "/jfbrew/temperatureControl/heaterKpValue";
+const char* topic_heaterKiValue = "/jfbrew/temperatureControl/heaterKiValue";
+const char* topic_heaterKdValue = "/jfbrew/temperatureControl/heaterKdValue";
+const char* topic_heaterPidOutput = "/jfbrew/temperatureControl/heaterPidOtput";
+
+const char* topic_coolerKp = "/jfbrew/temperatureControl/coolerKp";
+const char* topic_coolerKi = "/jfbrew/temperatureControl/coolerKi";
+const char* topic_coolerKd = "/jfbrew/temperatureControl/coolerKd";
+const char* topic_coolerKpValue = "/jfbrew/temperatureControl/coolerKpValue";
+const char* topic_coolerKiValue = "/jfbrew/temperatureControl/coolerKiValue";
+const char* topic_coolerKdValue = "/jfbrew/temperatureControl/coolerKdValue";
+const char* topic_coolerPidOutput = "/jfbrew/temperatureControl/coolerPidOtput";
+
 const char* topic_resetPid = "/jfbrew/temperatureControl/resetCmd";
 constexpr size_t stringBufferSize = 128;
 char stringBuffer[stringBufferSize];
@@ -174,8 +187,36 @@ void loop() {
     else
       mqtt.publish(topic_fanState, valueOn);
 
+    auto heaterPidOutput = app->HeaterPidOutput();
+    snprintf(stringBuffer, stringBufferSize, "%f", heaterPidOutput);
+    mqtt.publish(topic_heaterPidOutput,stringBuffer );
+
+    auto coolerPidOutput = app->CoolerPidOutput();
+    snprintf(stringBuffer, stringBufferSize, "%f", coolerPidOutput);
+    mqtt.publish(topic_coolerPidOutput, stringBuffer);
+
+    auto coolerPidValues = app->CoolerPidValues();
+    snprintf(stringBuffer, stringBufferSize, "%f", coolerPidValues.P);
+    mqtt.publish(topic_coolerKpValue, stringBuffer);
+
+    snprintf(stringBuffer, stringBufferSize, "%f", coolerPidValues.I);
+    mqtt.publish(topic_coolerKiValue, stringBuffer);
+
+    snprintf(stringBuffer, stringBufferSize, "%f", coolerPidValues.D);
+    mqtt.publish(topic_coolerKdValue, stringBuffer);
+
+    auto heaterPidValues = app->HeaterPidValues();
+    snprintf(stringBuffer, stringBufferSize, "%f", heaterPidValues.P);
+    mqtt.publish(topic_heaterKpValue, stringBuffer);
+
+    snprintf(stringBuffer, stringBufferSize, "%f", heaterPidValues.I);
+    mqtt.publish(topic_heaterKiValue, stringBuffer);
+
+    snprintf(stringBuffer, stringBufferSize, "%f", heaterPidValues.D);
+    mqtt.publish(topic_heaterKdValue, stringBuffer);
+
     if(!button5->AreControlsEnabled()) {
-      button5->SetText(Actuators::Relays::ToString(app->FanRelayState()));
+      button5->SetText(app->RegulationStateToString(app->RegulationState()));
     }
 
     uptimeHours = millis() / (60*60000);
@@ -261,6 +302,9 @@ void ConnectWifi() {
   mqtt.subscribe(topic_heaterKp);
   mqtt.subscribe(topic_heaterKi);
   mqtt.subscribe(topic_heaterKd);
+  mqtt.subscribe(topic_coolerKp);
+  mqtt.subscribe(topic_coolerKi);
+  mqtt.subscribe(topic_coolerKd);
   mqtt.subscribe(topic_resetPid);
 
   mqtt.onMessage(mqttMessageReceived);
@@ -304,7 +348,7 @@ void InitUI() {
   button5->SetBackgroundColor(MAROON);
   button5->SetTextColor(WHITE);
   button5->SetText("---");
-  button5->SetTitle("Fan");
+  button5->SetTitle("State");
 
   topBar->SetUptime(0);
   topBar->SetWifiStatus(StatusBar::WifiStatuses::No_signal);
@@ -476,6 +520,12 @@ void mqttMessageReceived(String &topic, String &payload) {
     app->HeaterKi(payload.toFloat());
   } else if(topic == topic_heaterKd) {
     app->HeaterKd(payload.toFloat());
+  } else if(topic == topic_coolerKp) {
+    app->CoolerKp(payload.toFloat());
+  } else if(topic == topic_coolerKi) {
+    app->CoolerKi(payload.toFloat());
+  } else if(topic == topic_coolerKd) {
+    app->CoolerKd(payload.toFloat());
   } else if(topic == topic_resetPid) {
       app->ResetPid();
   }

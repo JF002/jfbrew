@@ -29,9 +29,10 @@ namespace Codingfield {
         // Should be called periodically. The calling period will
         // determine the period of the PWM
         void Update();
+        void Reset();
 
       private:
-        void Reset();
+
         Relays::Relay* actualRelay = nullptr;
 
         uint32_t period = 1000;

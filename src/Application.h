@@ -24,9 +24,18 @@ namespace Codingfield {
 
     class Application {
       public:
+        enum class States {Idle, Heating, Cooling};
+        struct PidValues {
+            double P;
+            double I;
+            double D;
+        };
+
         Application(const Configuration& configuration);
         void Init();
         void Update();
+
+        States RegulationState() const { return state; }
 
         float FridgeTemperature() const;
         float BeerTemperature() const;
@@ -58,12 +67,26 @@ namespace Codingfield {
 
         void BeerSetPoint(float s);
 
-      void HeaterKp(float kp);
+        void HeaterKp(float kp);
 
-      void HeaterKi(float ki);
+        void HeaterKi(float ki);
 
-      void HeaterKd(float kd);
+        void HeaterKd(float kd);
 
+        double HeaterPidOutput() const;
+        PidValues HeaterPidValues() const;
+
+        void CoolerKp(float kp);
+
+        void CoolerKi(float ki);
+
+        void CoolerKd(float kd);
+
+        double CoolerPidOutput() const;
+        PidValues CoolerPidValues() const;
+
+
+        std::string RegulationStateToString(const Application::States s) const;
         void ResetPid();
 
     private:
@@ -87,10 +110,27 @@ namespace Codingfield {
         OneWire* oneWire;
         DallasTemperature* temperatureSensors;
         MiniPID* heaterPid;
+        MiniPID* coolerPid;
 
         uint32_t cpt = 0;
-        float beerSetPoint = 20.0f;
+        float beerSetPoint = 15.0f;
+        States state = States::Idle;
 
+        uint32_t minIdleTime = 600; // 600000 = 10 minutes, seconds
+        uint32_t idleTime = 0; // seconds
+
+        uint32_t minCoolingTime = 600; // 600000 = 10 minutes, seconds
+        uint32_t coolingTime = 0; // seconds
+
+        uint32_t minHeatingTime = 600; // 600000 = 10 minutes, seconds
+        uint32_t heatingTime = 0; // seconds
+
+        float temperatureHystereis = 0.2f; // degrees
+
+        double heaterPidOutput = 0.0;
+        double coolerPidOutput = 0.0;
     };
+
+
   }
 }

@@ -26,7 +26,7 @@ namespace Codingfield {
           int waitForConversionTime = 0;
 
           int timeBetweenConversion = 1000;
-          int timeNeededForConversion = 750;
+          int timeNeededForConversion = 200;
 
           DallasTemperature* bus = nullptr;
           std::vector<DS18B20*> sensors;

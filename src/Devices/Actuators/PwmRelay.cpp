@@ -1,5 +1,7 @@
 #include "PwmRelay.h"
-
+#include <iostream>
+#include <sstream>
+#include <Arduino.h>
 using namespace Codingfield::Brew::Actuators;
 
 PwmRelay::PwmRelay(Relays::Relay* relay, Relays::States idleState, Relays::States activateState) : actualRelay{relay},
@@ -11,13 +13,21 @@ PwmRelay::PwmRelay(Relays::Relay* relay, Relays::States idleState, Relays::State
 void PwmRelay::Update() {
   if(!activated) return;
 
-  if(value < period)
-    value++;
-  else
-    value = 0;
-
   Relays::States targetState;
   Relays::States currentState = actualRelay->State();
+
+  if(value < period) {
+    if(currentState == activateState || value == 0) {
+      consign = newConsign;
+    }
+    value++;
+  }
+  else {
+    value = 0;
+    consign = newConsign;
+  }
+
+
 
   if(value < consign)
     targetState = activateState;
@@ -41,12 +51,20 @@ void PwmRelay::Update() {
       idleTime = 0;
     }
   }
+
+  if(value%100 == 0) {
+      std ::stringstream ss;
+      ss << "Period: " << period << " - Value: " << value <<  " - consign: " << consign << " - newConsign: " << newConsign << " -  current state: " << (currentState==idleState?"Idle":"Activated") << " -  target state: " << (targetState==idleState?"Idle":"Activated");
+      Serial.println(ss.str().c_str());
+  }
+
+
 }
 
 void PwmRelay::Reset() {
   value = 0;
   activatedTime = 0;
-  idleTime = 0;
+  idleTime = minActivatedTime+1;
 }
 
 void PwmRelay::Activate() {
@@ -69,7 +87,7 @@ uint32_t PwmRelay::Period() const {
 }
 
 void PwmRelay::Consign(uint32_t c) {
-  consign = c;
+  newConsign = c;
 }
 
 uint32_t PwmRelay::Consign() const {

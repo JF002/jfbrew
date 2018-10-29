@@ -22,7 +22,17 @@ float DS18B20::Value() const {
 }
 
 void DS18B20::Update() {
-  float newValue = sensors->getTempC(address);
-  if((newValue > -100.0f) && (newValue < 100.0f))
-    value = newValue;
+  for(int i = 0; i < 2; i++) {
+    float newValue = sensors->getTempC(address);
+    if((newValue > -100.0f) && (newValue < 100.0f)) {
+      value = newValue;
+      return;
+    }
+    else {
+      Serial.println("Temperature Retry");
+      delay(1);
+    }
+  }
+  // TODO add performance counter (nbRetries, nbError)
+  Serial.println("Temperature ERROR");
 }

@@ -50,6 +50,9 @@ Application* app;
 
 Actuators::Relays::States buttonState = Actuators::Relays::States::Closed;
 
+bool isRegulationEnabled = false;
+float setPoint = 20.0f;
+
 uint32_t loopCount = 0;
 
 int32_t uptimeHours=0;
@@ -164,9 +167,9 @@ void loop() {
     else
       mqtt.publish(topic_heaterState, valueOn);
 
-    if(!button3->AreControlsEnabled()) {
+    /*if(!button3->AreControlsEnabled()) {
       button3->SetText(Actuators::Relays::ToString(app->HeaterRelayState()));
-    }
+    }*/
 
     if(app->CoolerRelayState() == Actuators::Relays::States::Open)
       mqtt.publish(topic_coolerState, valueOff);
@@ -177,10 +180,6 @@ void loop() {
     mqtt.publish(topic_heaterPwmValue, String(app->HeaterPwm()));
     mqtt.publish(topic_coolerPwmState, String(app->IsCoolerPwmActivated()));
     mqtt.publish(topic_heaterPwmState, String(app->IsHeaterPwmActivated()));
-
-    if(!button4->AreControlsEnabled()) {
-      button4->SetText( Actuators::Relays::ToString(app->CoolerRelayState()));
-    }
 
     if(app->FanRelayState() == Actuators::Relays::States::Open)
       mqtt.publish(topic_fanState, valueOff);
@@ -337,13 +336,13 @@ void InitUI() {
   button3 = new Codingfield::UI::UpDownButton(mosaic);
   button3->SetBackgroundColor(PURPLE);
   button3->SetTextColor(WHITE);
-  button3->SetText("---");
-  button3->SetTitle("Heater");
+  button3->SetText("Disabled");
+  button3->SetTitle("Regulation");
   button4 = new Codingfield::UI::UpDownButton(mosaic);
   button4->SetBackgroundColor(GREEN);
   button4->SetTextColor(WHITE);
-  button4->SetText("---");
-  button4->SetTitle("Cooler");
+  button4->SetText("20.0C");
+  button4->SetTitle("Setpoint");
   button5 = new Codingfield::UI::UpDownButton(mosaic);
   button5->SetBackgroundColor(MAROON);
   button5->SetTextColor(WHITE);
@@ -376,62 +375,68 @@ void InitUI() {
   });
 
   // Button 3
-  button3->SetUpCallback([&buttonState](UpDownButton* w) {
-    if(buttonState == Actuators::Relays::States::Closed)
-      buttonState = Actuators::Relays::States::Open;
+  button3->SetUpCallback([&isRegulationEnabled](UpDownButton* w) {
+    if(isRegulationEnabled == false)
+      isRegulationEnabled = true;
     else
-      buttonState = Actuators::Relays::States::Closed;
-    w->SetText(Actuators::Relays::ToString(buttonState).c_str());
+      isRegulationEnabled = false;
+
+    w->SetText(isRegulationEnabled?"Enabled":"Disabled");
     return true;
   });
 
-  button3->SetDownCallback([&buttonState](UpDownButton* w) {
-    if(buttonState == Actuators::Relays::States::Closed)
-      buttonState = Actuators::Relays::States::Open;
+  button3->SetDownCallback([&isRegulationEnabled](UpDownButton* w) {
+    if(isRegulationEnabled == false)
+      isRegulationEnabled = true;
     else
-      buttonState = Actuators::Relays::States::Closed;
-    w->SetText(Actuators::Relays::ToString(buttonState).c_str());
+      isRegulationEnabled = false;
+
+    w->SetText(isRegulationEnabled?"Enabled":"Disabled");
     return true;
   });
 
-  button3->SetApplyCallback([&buttonState](UpDownButton* w) {
-    app->HeaterRelayState(buttonState);
+  button3->SetApplyCallback([&isRegulationEnabled](UpDownButton* w) {
+    if(isRegulationEnabled)
+      app->EnableRegulation();
+    else
+      app->DisableRegulation();
     return false;
   });
 
-  button3->SetCancelCallback([&buttonState](UpDownButton* w) {
-    buttonState = app->HeaterRelayState();
-    w->SetText(Actuators::Relays::ToString(buttonState).c_str());
+  button3->SetCancelCallback([&isRegulationEnabled](UpDownButton* w) {
+    isRegulationEnabled = app->IsRegulationEnabled();
+    w->SetText(isRegulationEnabled?"Enabled":"Disabled");
     return true;
   });
 
   // Button 4
-  button4->SetUpCallback([&buttonState](UpDownButton* w) {
-    if(buttonState == Actuators::Relays::States::Closed)
-      buttonState = Actuators::Relays::States::Open;
-    else
-      buttonState = Actuators::Relays::States::Closed;
-    w->SetText(Actuators::Relays::ToString(buttonState).c_str());
+  button4->SetUpCallback([&setPoint](UpDownButton* w) {
+    if(setPoint < 35.0f)
+      setPoint += 1.0;
+
+    snprintf(stringBuffer, stringBufferSize, "%.1f%s", setPoint, temperatureSymbole);
+    w->SetText(stringBuffer);
     return true;
   });
 
-  button4->SetDownCallback([&buttonState](UpDownButton* w) {
-    if(buttonState == Actuators::Relays::States::Closed)
-      buttonState = Actuators::Relays::States::Open;
-    else
-      buttonState = Actuators::Relays::States::Closed;
-    w->SetText(Actuators::Relays::ToString(buttonState).c_str());
+  button4->SetDownCallback([&setPoint](UpDownButton* w) {
+    if(setPoint > 10.0f)
+      setPoint -= 1.0;
+
+    snprintf(stringBuffer, stringBufferSize, "%.1f%s", setPoint, temperatureSymbole);
+    w->SetText(stringBuffer);
     return true;
   });
 
-  button4->SetApplyCallback([&buttonState](UpDownButton* w) {
-    app->CoolerRelayState(buttonState);
+  button4->SetApplyCallback([&setPoint](UpDownButton* w) {
+    app->BeerSetPoint(setPoint);
     return false;
   });
 
-  button4->SetCancelCallback([&buttonState](UpDownButton* w) {
-    buttonState = app->CoolerRelayState();
-    w->SetText(Actuators::Relays::ToString(buttonState).c_str());
+  button4->SetCancelCallback([&setPoint](UpDownButton* w) {
+    setPoint = app->BeerSetPoint();
+    snprintf(stringBuffer, stringBufferSize, "%.1f%s", setPoint, temperatureSymbole);
+    w->SetText(stringBuffer);
     return true;
   });
 

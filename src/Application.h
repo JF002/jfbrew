@@ -37,6 +37,10 @@ namespace Codingfield {
 
         States RegulationState() const { return state; }
 
+        void EnableRegulation();
+        void DisableRegulation();
+        bool IsRegulationEnabled() const;
+
         float FridgeTemperature() const;
         float BeerTemperature() const;
         float RoomTemperature() const;
@@ -66,6 +70,7 @@ namespace Codingfield {
         bool IsHeaterPwmActivated() const;
 
         void BeerSetPoint(float s);
+        float BeerSetPoint() const;
 
         void HeaterKp(float kp);
 
@@ -113,7 +118,7 @@ namespace Codingfield {
         MiniPID* coolerPid;
 
         uint32_t cpt = 0;
-        float beerSetPoint = 15.0f;
+        float beerSetPoint = 20.0f;
         States state = States::Idle;
 
         uint32_t minIdleTime = 600; // 600000 = 10 minutes, seconds
@@ -129,6 +134,8 @@ namespace Codingfield {
 
         double heaterPidOutput = 0.0;
         double coolerPidOutput = 0.0;
+
+        bool regulationEnabled = false;
     };
 
 

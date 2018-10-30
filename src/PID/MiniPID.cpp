@@ -285,7 +285,7 @@ double MiniPID::getOutput(double actual, double setpoint){
 	//snprintf(buf,200, "O=%.2f - I = %.2f - D(raw)=%.2f - D(filtered)=%.2f",output, Ioutput, tempD, Doutput);
 	//std::stringstream ss;
 	//ss << "PID : SetPoint=" << setpoint << " - Actual =" << actual << " - Output=" << output << " - P=" << Poutput << " - I="  <<  Ioutput << " - D(raw)=" << tempD <<  " - D(filtered)="<<Doutput;
-	Serial.println(buf);
+	//Serial.println(buf);
 	return output;
 }
 

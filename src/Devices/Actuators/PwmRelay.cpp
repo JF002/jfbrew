@@ -51,14 +51,6 @@ void PwmRelay::Update() {
       idleTime = 0;
     }
   }
-
-  if(value%100 == 0) {
-      std ::stringstream ss;
-      ss << "Period: " << period << " - Value: " << value <<  " - consign: " << consign << " - newConsign: " << newConsign << " -  current state: " << (currentState==idleState?"Idle":"Activated") << " -  target state: " << (targetState==idleState?"Idle":"Activated");
-      Serial.println(ss.str().c_str());
-  }
-
-
 }
 
 void PwmRelay::Reset() {

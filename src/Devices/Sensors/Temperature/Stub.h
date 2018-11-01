@@ -14,6 +14,17 @@ namespace Codingfield {
           float Value() const override;
           void Update() override;
           void SetValue(float v);
+
+            int32_t ErrorCounter() override;
+
+            int32_t RetryCounter() override;
+
+            bool IsReady() override;
+
+            void Reset() override;
+
+            void ResetCounters() override;
+
         private:
           float value = 0.0f;
         };

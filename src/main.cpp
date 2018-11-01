@@ -167,9 +167,9 @@ void loop() {
     else
       mqtt.publish(topic_heaterState, valueOn);
 
-    /*if(!button3->AreControlsEnabled()) {
-      button3->SetText(Actuators::Relays::ToString(app->HeaterRelayState()));
-    }*/
+    if(!button3->AreControlsEnabled()) {
+        button3->SetText(app->IsRegulationEnabled()?"Enabled":"Disabled");
+    }
 
     if(app->CoolerRelayState() == Actuators::Relays::States::Open)
       mqtt.publish(topic_coolerState, valueOff);

@@ -24,7 +24,8 @@ namespace Codingfield {
 
     class Application {
       public:
-        enum class States {Idle, Heating, Cooling};
+        enum class States {Idle, Heating, Cooling, Pending, Error
+        };
         struct PidValues {
             double P;
             double I;
@@ -136,6 +137,10 @@ namespace Codingfield {
         double coolerPidOutput = 0.0;
 
         bool regulationEnabled = false;
+
+        bool TemperatureSensorsSanityCheck();
+        bool AreTemperatureSensorsReady();
+        void ProcessRegulation();
     };
 
 

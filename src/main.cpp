@@ -134,6 +134,10 @@ const char* topic_coolerPidOutput = "/jfbrew/temperatureControl/coolerPidOtput";
 
 const char* topic_resetPid = "/jfbrew/temperatureControl/resetCmd";
 const char* topic_regulationState = "/jfbrew/temperatureControl/regulationState";
+
+const char* topic_heaterPoints = "/jfbrew/temperatureControl/heater/points";
+const char* topic_coolerPoints = "/jfbrew/temperatureControl/cooler/points";
+
 constexpr size_t stringBufferSize = 128;
 char stringBuffer[stringBufferSize];
 
@@ -242,6 +246,13 @@ void loop() {
     snprintf(stringBuffer, stringBufferSize, "%s", app->RegulationStateToString(app->RegulationState()).c_str());
     mqtt.publish(topic_regulationState, stringBuffer, true, 0);
   }
+
+    snprintf(stringBuffer, stringBufferSize, "%d", app->TotalHeaterPoints());
+    mqtt.publish(topic_heaterPoints, stringBuffer);
+
+    snprintf(stringBuffer, stringBufferSize, "%d", app->TotalCoolerPoints());
+    mqtt.publish(topic_coolerPoints, stringBuffer);
+
 
   if(!button5->AreControlsEnabled()) {
     button5->SetText(app->RegulationStateToString(app->RegulationState()));

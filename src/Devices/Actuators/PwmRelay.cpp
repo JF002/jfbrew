@@ -38,6 +38,7 @@ void PwmRelay::Update() {
 
   if(currentState == activateState) {
     activatedTime++;
+    totalActivatedTime++;
     if(targetState == idleState &&  activatedTime >= minActivatedTime) {
       actualRelay->State(idleState);
       activatedTime = 0;
@@ -105,4 +106,8 @@ uint32_t PwmRelay::MinimumIdleTime() const {
 
 bool PwmRelay::IsActivated() const {
   return activated;
+}
+
+uint32_t PwmRelay::TotalActivatedTime() const {
+  return totalActivatedTime;
 }

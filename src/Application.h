@@ -97,6 +97,9 @@ namespace Codingfield {
         std::string RegulationStateToString(const Application::States s) const;
         void ResetPid();
 
+        uint32_t TotalHeaterPoints() const;
+        uint32_t TotalCoolerPoints() const;
+
     private:
 
         void InitHW();

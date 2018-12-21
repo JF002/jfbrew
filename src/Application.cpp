@@ -33,20 +33,15 @@ void Application::Update() {
   bool areTempSensorsReady = AreTemperatureSensorsReady();
 
   if(!areTempSensorsOk) {
-    if(state != States::Error)
-      Serial.println("Temperature sensors in ERROR!");
     state = States::Error;
     heaterPwmRelay->Consign(0);
     coolerPwmRelay->Consign(0);
   } else if(!areTempSensorsReady) {
-    if(state != States::Pending)
-      Serial.println("Temperature sensors PENDING...");
     state = States::Pending;
     heaterPwmRelay->Consign(0);
     coolerPwmRelay->Consign(0);
   } else {
     if(state == States::Pending) {
-      Serial.println("Temperature sensors OK");
       state = States::Idle;
       idleTime = minIdleTime+1;
     }
@@ -99,7 +94,6 @@ void Application::InitHW() {
   coolerPwmRelay->MinimumActivatedTime(120 * 100);
   coolerPwmRelay->MinimumIdleTime(180 * 100);
   coolerPwmRelay->Consign(0);
-  //pwmRelay->Activate();
 
   heaterPwmRelay = new Actuators::PwmRelay(heaterRelay, Relays::States::Open, Relays::States::Closed);
   heaterPwmRelay->Period(4 * 100);
@@ -107,13 +101,17 @@ void Application::InitHW() {
   heaterPwmRelay->MinimumIdleTime(0 * 100);
   heaterPwmRelay->Consign(0);
 
-  //heaterPid = new MiniPID(30.0, 1800, 60);
   heaterPid = new MiniPID(20.0, 0.3, 40.0);
   heaterPid->setOutputLimits(0.0, heaterPwmRelay->Period());
 
   coolerPid = new MiniPID(3600.0, 7.0, 2500.0);
   coolerPid->setOutputLimits(-coolerPwmRelay->Period(), 0.0);
   coolerPid->setDirection(true);
+
+  beerToFridgePid = new MiniPID(1, 0, 0.2f);
+  beerToFridgePid->setOutputLimits(-10.0,+10.0);
+  beerToFridgePid->setMaxIOutput(1.0);
+
 
 }
 
@@ -259,6 +257,7 @@ void Application::CoolerKd(float kd) {
 void Application::ResetPid() {
   heaterPid->reset();
   coolerPid->reset();
+  beerToFridgePid->reset();
 }
 
 double Application::HeaterPidOutput() const {
@@ -275,6 +274,10 @@ Application::PidValues Application::HeaterPidValues() const {
 
 Application::PidValues Application::CoolerPidValues() const {
   return PidValues {coolerPid->GetP(), coolerPid->GetI(), coolerPid->GetD()};
+}
+
+Application::PidValues Application::BeerToFridgePidValues() const {
+    return PidValues {beerToFridgePid->GetP(), beerToFridgePid->GetI(), beerToFridgePid->GetD()};
 }
 
 std::string Application::RegulationStateToString(const Application::States s) const {
@@ -346,16 +349,63 @@ bool Application::AreTemperatureSensorsReady() {
 void Application::ProcessRegulation() {
   if (regulationEnabled) {
     if ((cpt % 100) == 0) {
+      double heaterConsign = 0.0f;
+      double coolerConsign = 0.0f;
+      double fridgeConsign = 0.0f;
+
+      fridgeConsign = beerToFridgePid->getOutput(beerTempSensor->Value(), beerSetPoint);
+      beerToFridgePidOutput = fridgeTempSensor->Value() + fridgeConsign;
+      //Serial.println("B2F PID : " + (String)beerTempSensor->Value() + " - " + (String)beerSetPoint + " - " + String(beerToFridgePidOutput));
+
+      heaterConsign = heaterPid->getOutput(fridgeTempSensor->Value(), beerToFridgePidOutput);
+      heaterPidOutput = heaterConsign;
+
+      coolerConsign = coolerPid->getOutput(fridgeTempSensor->Value(), beerToFridgePidOutput);
+      coolerPidOutput = coolerConsign;
+
+      switch(state) {
+        case States::Idle:
+          if(idleTime >= minIdleTime) {
+            if (fridgeTempSensor->Value() < beerToFridgePidOutput - temperatureHystereis) {
+              heaterPwmRelay->Reset();
+              coolerPwmRelay->Reset();
+              state = States::Heating;
+            }
+            else if (fridgeTempSensor->Value() > beerToFridgePidOutput + temperatureHystereis) {
+              heaterPwmRelay->Reset();
+              coolerPwmRelay->Reset();
+              state = States::Cooling;
+            }
+          }
+          break;
+        case States::Heating:
+          if(fridgeTempSensor->Value() > beerToFridgePidOutput - temperatureHystereis) {
+            state = States::Idle;
+            heaterPid->reset();
+            coolerPid->reset();
+          }
+          break;
+        case States::Cooling:
+          if (fridgeTempSensor->Value() < beerToFridgePidOutput + temperatureHystereis) {
+            state = States::Idle;
+            heaterPid->reset();
+            coolerPid->reset();
+          }
+          break;
+        default:break;
+      }
+
+      /*
       if ((state == States::Idle && idleTime >= minIdleTime) ||
           (state == States::Cooling && coolingTime >= minCoolingTime) ||
           (state == States::Heating && heatingTime >= minHeatingTime)) {
-        if (fridgeTempSensor->Value() < beerSetPoint - temperatureHystereis) {
+        if (fridgeTempSensor->Value() < beerToFridgePidOutput - temperatureHystereis) {
           if (state != States::Heating) {
             heaterPwmRelay->Reset();
             coolerPwmRelay->Reset();
           }
           state = States::Heating;
-        } else if (fridgeTempSensor->Value() > beerSetPoint + temperatureHystereis) {
+        } else if (fridgeTempSensor->Value() > beerToFridgePidOutput + temperatureHystereis) {
           if (state != States::Cooling) {
             heaterPwmRelay->Reset();
             coolerPwmRelay->Reset();
@@ -366,14 +416,9 @@ void Application::ProcessRegulation() {
         }
       }
 
-      double heaterConsign = 0.0f;
-      double coolerConsign = 0.0f;
+*/
 
-      heaterConsign = heaterPid->getOutput(fridgeTempSensor->Value(), beerSetPoint);
-      heaterPidOutput = heaterConsign;
 
-      coolerConsign = coolerPid->getOutput(fridgeTempSensor->Value(), beerSetPoint);
-      coolerPidOutput = coolerConsign;
 
       switch (state) {
         case States::Heating:
@@ -435,4 +480,8 @@ void Application::ProcessRegulation() {
        */
     }
   }
+}
+
+double Application::BeerToFridgePidOutput() const {
+  return beerToFridgePidOutput;
 }

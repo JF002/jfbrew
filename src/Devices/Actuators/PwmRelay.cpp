@@ -56,6 +56,7 @@ void PwmRelay::Update() {
 void PwmRelay::Reset() {
   value = 0;
   activatedTime = 0;
+  actualRelay->State(idleState);
   idleTime = minActivatedTime+1;
 }
 

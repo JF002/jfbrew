@@ -91,6 +91,8 @@ namespace Codingfield {
         double CoolerPidOutput() const;
         PidValues CoolerPidValues() const;
 
+        double BeerToFridgePidOutput() const;
+        PidValues BeerToFridgePidValues() const;
 
         std::string RegulationStateToString(const Application::States s) const;
         void ResetPid();
@@ -117,12 +119,13 @@ namespace Codingfield {
         DallasTemperature* temperatureSensors;
         MiniPID* heaterPid;
         MiniPID* coolerPid;
+        MiniPID* beerToFridgePid;
 
         uint32_t cpt = 0;
         float beerSetPoint = 20.0f;
         States state = States::Idle;
 
-        uint32_t minIdleTime = 600; // 600000 = 10 minutes, seconds
+        uint32_t minIdleTime = 1200; // 600000 = 10 minutes, seconds
         uint32_t idleTime = 0; // seconds
 
         uint32_t minCoolingTime = 600; // 600000 = 10 minutes, seconds
@@ -135,6 +138,7 @@ namespace Codingfield {
 
         double heaterPidOutput = 0.0;
         double coolerPidOutput = 0.0;
+        double beerToFridgePidOutput = 0.0;
 
         bool regulationEnabled = false;
 

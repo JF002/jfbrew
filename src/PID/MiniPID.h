@@ -29,9 +29,9 @@ public:
 	double getOutput(double);
 	double getOutput(double, double);
 
-    double GetP() const {return P;}
-    double GetI() const {return I;}
-    double GetD() const {return D;}
+    double GetP() const {return lastP;}
+    double GetI() const {return lastI;}
+    double GetD() const {return lastD;}
 
 private:
 	double clamp(double, double, double);
@@ -68,6 +68,9 @@ private:
 	IIRFilter* derivativeFilter0 = nullptr;
 	IIRFilter* derivativeFilter1 = nullptr;
 	IIRFilter* derivativeFilter2 = nullptr;
-	Cascade<3> *cascade = nullptr;
+	Cascade<3> *derivativeCascade = nullptr;
+	double lastP = 0.0;
+	double lastI = 0.0;
+	double lastD = 0.0;
 };
 #endif

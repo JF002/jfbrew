@@ -80,7 +80,7 @@ void setup() {
 
   Serial.print("Connecting to Wifi... ");
   ConnectWifi();
-  timeClient.update();
+//  timeClient.update();
   Serial.println("OK!");
 }
 
@@ -98,6 +98,7 @@ const char* topic_coolerPwmState = "/jfbrew/relay/cooler/pwm_state";
 const char* topic_heaterPwmState = "/jfbrew/relay/heater/pwm_state";
 const char* topic_fanState = "/jfbrew/relay/fan/state";
 const char* topic_beerSetPoint = "/jfbrew/beer/setpoint";
+const char* topic_beerSetPointValue = "/jfbrew/beer/setpoint_value";
 
 const char* topic_coolerCommand = "/jfbrew/relay/cooler/command";
 const char* topic_heaterCommand = "/jfbrew/relay/heater/command";
@@ -118,6 +119,11 @@ const char* topic_heaterKiValue = "/jfbrew/temperatureControl/heaterKiValue";
 const char* topic_heaterKdValue = "/jfbrew/temperatureControl/heaterKdValue";
 const char* topic_heaterPidOutput = "/jfbrew/temperatureControl/heaterPidOtput";
 
+const char* topic_beerToFridgeKpValue = "/jfbrew/temperatureControl/beerToFridgKpValue";
+const char* topic_beerToFridgeKiValue = "/jfbrew/temperatureControl/beerToFridgKiValue";
+const char* topic_beerToFridgeKdValue = "/jfbrew/temperatureControl/beerToFridgKdValue";
+const char* topic_beerToFridgePidOutput = "/jfbrew/temperatureControl/beerToFridgePidOutput";
+
 const char* topic_coolerKp = "/jfbrew/temperatureControl/coolerKp";
 const char* topic_coolerKi = "/jfbrew/temperatureControl/coolerKi";
 const char* topic_coolerKd = "/jfbrew/temperatureControl/coolerKd";
@@ -127,8 +133,11 @@ const char* topic_coolerKdValue = "/jfbrew/temperatureControl/coolerKdValue";
 const char* topic_coolerPidOutput = "/jfbrew/temperatureControl/coolerPidOtput";
 
 const char* topic_resetPid = "/jfbrew/temperatureControl/resetCmd";
+const char* topic_regulationState = "/jfbrew/temperatureControl/regulationState";
 constexpr size_t stringBufferSize = 128;
 char stringBuffer[stringBufferSize];
+
+Application::States lastRegulationState = Application::States::Idle;
 
 void loop() {
 
@@ -194,6 +203,10 @@ void loop() {
     snprintf(stringBuffer, stringBufferSize, "%f", coolerPidOutput);
     mqtt.publish(topic_coolerPidOutput, stringBuffer);
 
+    auto beerToFridgePidOutput = app->BeerToFridgePidOutput();
+    snprintf(stringBuffer, stringBufferSize, "%f", beerToFridgePidOutput);
+    mqtt.publish(topic_beerToFridgePidOutput, stringBuffer);
+
     auto coolerPidValues = app->CoolerPidValues();
     snprintf(stringBuffer, stringBufferSize, "%f", coolerPidValues.P);
     mqtt.publish(topic_coolerKpValue, stringBuffer);
@@ -204,19 +217,35 @@ void loop() {
     snprintf(stringBuffer, stringBufferSize, "%f", coolerPidValues.D);
     mqtt.publish(topic_coolerKdValue, stringBuffer);
 
-    auto heaterPidValues = app->HeaterPidValues();
-    snprintf(stringBuffer, stringBufferSize, "%f", heaterPidValues.P);
-    mqtt.publish(topic_heaterKpValue, stringBuffer);
+  auto heaterPidValues = app->HeaterPidValues();
+  snprintf(stringBuffer, stringBufferSize, "%f", heaterPidValues.P);
+  mqtt.publish(topic_heaterKpValue, stringBuffer);
 
-    snprintf(stringBuffer, stringBufferSize, "%f", heaterPidValues.I);
-    mqtt.publish(topic_heaterKiValue, stringBuffer);
+  snprintf(stringBuffer, stringBufferSize, "%f", heaterPidValues.I);
+  mqtt.publish(topic_heaterKiValue, stringBuffer);
 
-    snprintf(stringBuffer, stringBufferSize, "%f", heaterPidValues.D);
-    mqtt.publish(topic_heaterKdValue, stringBuffer);
+  snprintf(stringBuffer, stringBufferSize, "%f", heaterPidValues.D);
+  mqtt.publish(topic_heaterKdValue, stringBuffer);
 
-    if(!button5->AreControlsEnabled()) {
-      button5->SetText(app->RegulationStateToString(app->RegulationState()));
-    }
+
+  auto beerToFridgePidValues = app->BeerToFridgePidValues();
+  snprintf(stringBuffer, stringBufferSize, "%f", beerToFridgePidValues.P);
+  mqtt.publish(topic_beerToFridgeKpValue, stringBuffer);
+
+  snprintf(stringBuffer, stringBufferSize, "%f", beerToFridgePidValues.I);
+  mqtt.publish(topic_beerToFridgeKiValue, stringBuffer);
+
+  snprintf(stringBuffer, stringBufferSize, "%f", beerToFridgePidValues.D);
+  mqtt.publish(topic_beerToFridgeKdValue, stringBuffer);
+
+  if(lastRegulationState != app->RegulationState()) {
+    snprintf(stringBuffer, stringBufferSize, "%s", app->RegulationStateToString(app->RegulationState()).c_str());
+    mqtt.publish(topic_regulationState, stringBuffer, true, 0);
+  }
+
+  if(!button5->AreControlsEnabled()) {
+    button5->SetText(app->RegulationStateToString(app->RegulationState()));
+  }
 
     uptimeHours = millis() / (60*60000);
     topBar->SetUptime(uptimeHours);
@@ -282,6 +311,9 @@ void ConnectWifi() {
     Serial.print(".");
     delay(1000);
   }
+
+  mqtt.setWill(topic_regulationState, app->RegulationStateToString(Application::States::Error).c_str(), true, 0);
+
   mqtt.subscribe(topic_coolerCommand);
   mqtt.subscribe(topic_heaterCommand);
   mqtt.subscribe(topic_fanCommand);
@@ -430,6 +462,8 @@ void InitUI() {
 
   button4->SetApplyCallback([&setPoint](UpDownButton* w) {
     app->BeerSetPoint(setPoint);
+    snprintf(stringBuffer, stringBufferSize, "%.1f", setPoint);
+    mqtt.publish(topic_beerSetPointValue, stringBuffer, true, 0);
     return false;
   });
 
@@ -476,7 +510,7 @@ void InitUI() {
 }
 
 void mqttMessageReceived(String &topic, String &payload) {
-  Serial.println("MQTT message received : " + topic + " - " + payload);
+  //Serial.println("MQTT message received : " + topic + " - " + payload);
   if(topic == topic_coolerCommand) {
     if(payload == valueOff) {
       app->CoolerRelayState(Actuators::Relays::States::Open);

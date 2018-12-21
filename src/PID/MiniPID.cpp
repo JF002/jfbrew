@@ -52,7 +52,7 @@ void MiniPID::init(){
 	derivativeFilter0 = new IIRFilter(b_coefficients, a_coefficients);
 	derivativeFilter1 = new IIRFilter(b_coefficients, a_coefficients);
 	derivativeFilter2 = new IIRFilter(b_coefficients, a_coefficients);
-	cascade = new Cascade<3>({derivativeFilter0, derivativeFilter1, derivativeFilter2});
+	derivativeCascade = new Cascade<3>({derivativeFilter0, derivativeFilter1, derivativeFilter2});
 }
 
 //**********************************
@@ -232,7 +232,7 @@ double MiniPID::getOutput(double actual, double setpoint){
 	//the correct thing, and small values helps prevent output spikes and overshoot 
 
 	double tempD = -D*(actual-lastActual);
-	Doutput = cascade->filter(tempD);
+	Doutput = derivativeCascade->filter(tempD);
 	lastActual=actual;
 
 
@@ -240,13 +240,16 @@ double MiniPID::getOutput(double actual, double setpoint){
 	//The Iterm is more complex. There's several things to factor in to make it easier to deal with.
 	// 1. maxIoutput restricts the amount of output contributed by the Iterm.
 	// 2. prevent windup by not increasing errorSum if we're already running against our max Ioutput
-	// 3. prevent windup by not increasing errorSum if output is output=maxOutput	
-	Ioutput=I*errorSum;
+	// 3. prevent windup by not increasing errorSum if output is output=maxOutput
+	Ioutput = I*errorSum;
 	if(maxIOutput!=0){
-		Ioutput=clamp(Ioutput,-maxIOutput,maxIOutput); 
-	}	
+		Ioutput=clamp(Ioutput,-maxIOutput,maxIOutput);
+	}
 
 	//And, finally, we can just add the terms up
+	lastP = Poutput;
+	lastI = Ioutput;
+	lastD = Doutput;
 	output=Foutput + Poutput + Ioutput + Doutput;
 
 	//Figure out what we're doing with the error.
@@ -282,10 +285,10 @@ double MiniPID::getOutput(double actual, double setpoint){
 	}
 
 	lastOutput=output;
-	//snprintf(buf,200, "O=%.2f - I = %.2f - D(raw)=%.2f - D(filtered)=%.2f",output, Ioutput, tempD, Doutput);
+	//snprintf(buf,200, "O=%.2f - P = %.2f - I = %.2f - D(raw)=%.2f - D(filtered)=%.2f",output, Ioutput, tempD, Doutput);
 	//std::stringstream ss;
 	//ss << "PID : SetPoint=" << setpoint << " - Actual =" << actual << " - Output=" << output << " - P=" << Poutput << " - I="  <<  Ioutput << " - D(raw)=" << tempD <<  " - D(filtered)="<<Doutput;
-	//Serial.println(buf);
+	//Serial.println(ss.str().c_str());
 	return output;
 }
 
@@ -313,21 +316,21 @@ void MiniPID::reset(){
 	firstRun=true;
 	errorSum=0;
 
-    if(derivativeFilter0 != nullptr)
-        delete derivativeFilter0;
+	if(derivativeFilter0 != nullptr)
+		delete derivativeFilter0;
 
-    if(derivativeFilter1 != nullptr)
-        delete derivativeFilter1;
+	if(derivativeFilter1 != nullptr)
+		delete derivativeFilter1;
 
-    if(derivativeFilter2 != nullptr)
-        delete derivativeFilter2;
+	if(derivativeFilter2 != nullptr)
+		delete derivativeFilter2;
 
 	derivativeFilter0 = new IIRFilter(b_coefficients, a_coefficients);
 	derivativeFilter1 = new IIRFilter(b_coefficients, a_coefficients);
 	derivativeFilter2 = new IIRFilter(b_coefficients, a_coefficients);
-	if(cascade != nullptr)
-	    delete cascade;
-	cascade = new Cascade<3>({derivativeFilter0, derivativeFilter1, derivativeFilter2});
+	if(derivativeCascade != nullptr)
+		delete derivativeCascade;
+	derivativeCascade = new Cascade<3>({derivativeFilter0, derivativeFilter1, derivativeFilter2});
 }
 
 /**Set the maximum rate the output can increase per cycle. 

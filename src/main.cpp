@@ -98,6 +98,7 @@ const char* topic_coolerPwmState = "/jfbrew/relay/cooler/pwm_state";
 const char* topic_heaterPwmState = "/jfbrew/relay/heater/pwm_state";
 const char* topic_fanState = "/jfbrew/relay/fan/state";
 const char* topic_beerSetPoint = "/jfbrew/beer/setpoint";
+const char* topic_beerSetPointValue = "/jfbrew/beer/setpoint_value";
 
 const char* topic_coolerCommand = "/jfbrew/relay/cooler/command";
 const char* topic_heaterCommand = "/jfbrew/relay/heater/command";
@@ -239,7 +240,7 @@ void loop() {
 
   if(lastRegulationState != app->RegulationState()) {
     snprintf(stringBuffer, stringBufferSize, "%s", app->RegulationStateToString(app->RegulationState()).c_str());
-    mqtt.publish(topic_regulationState, stringBuffer);
+    mqtt.publish(topic_regulationState, stringBuffer, true, 0);
   }
 
   if(!button5->AreControlsEnabled()) {
@@ -310,6 +311,9 @@ void ConnectWifi() {
     Serial.print(".");
     delay(1000);
   }
+
+  mqtt.setWill(topic_regulationState, app->RegulationStateToString(Application::States::Error).c_str(), true, 0);
+
   mqtt.subscribe(topic_coolerCommand);
   mqtt.subscribe(topic_heaterCommand);
   mqtt.subscribe(topic_fanCommand);
@@ -458,6 +462,8 @@ void InitUI() {
 
   button4->SetApplyCallback([&setPoint](UpDownButton* w) {
     app->BeerSetPoint(setPoint);
+    snprintf(stringBuffer, stringBufferSize, "%.1f", setPoint);
+    mqtt.publish(topic_beerSetPointValue, stringBuffer, true, 0);
     return false;
   });
 

@@ -132,8 +132,11 @@ const char* topic_coolerKdValue = "/jfbrew/temperatureControl/coolerKdValue";
 const char* topic_coolerPidOutput = "/jfbrew/temperatureControl/coolerPidOtput";
 
 const char* topic_resetPid = "/jfbrew/temperatureControl/resetCmd";
+const char* topic_regulationState = "/jfbrew/temperatureControl/regulationState";
 constexpr size_t stringBufferSize = 128;
 char stringBuffer[stringBufferSize];
+
+Application::States lastRegulationState = Application::States::Idle;
 
 void loop() {
 
@@ -234,10 +237,14 @@ void loop() {
   snprintf(stringBuffer, stringBufferSize, "%f", beerToFridgePidValues.D);
   mqtt.publish(topic_beerToFridgeKdValue, stringBuffer);
 
+  if(lastRegulationState != app->RegulationState()) {
+    snprintf(stringBuffer, stringBufferSize, "%s", app->RegulationStateToString(app->RegulationState()).c_str());
+    mqtt.publish(topic_regulationState, stringBuffer);
+  }
 
-      if(!button5->AreControlsEnabled()) {
-      button5->SetText(app->RegulationStateToString(app->RegulationState()));
-    }
+  if(!button5->AreControlsEnabled()) {
+    button5->SetText(app->RegulationStateToString(app->RegulationState()));
+  }
 
     uptimeHours = millis() / (60*60000);
     topBar->SetUptime(uptimeHours);

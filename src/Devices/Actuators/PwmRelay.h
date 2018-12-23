@@ -25,6 +25,8 @@ namespace Codingfield {
         void MinimumIdleTime(uint32_t m);
         uint32_t MinimumIdleTime() const;
 
+        uint32_t TotalActivatedTime() const;
+
 
         // Should be called periodically. The calling period will
         // determine the period of the PWM
@@ -47,6 +49,7 @@ namespace Codingfield {
         Relays::States idleState = Relays::States::Open;
         Relays::States activateState = Relays::States::Closed;
         bool activated = false;
+        uint32_t totalActivatedTime = 0;
       };
     }
   }

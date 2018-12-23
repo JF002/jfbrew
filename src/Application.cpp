@@ -466,3 +466,11 @@ void Application::ProcessRegulation() {
 double Application::BeerToFridgePidOutput() const {
   return beerToFridgePidOutput;
 }
+
+uint32_t Application::TotalHeaterPoints() const {
+  return heaterPwmRelay->TotalActivatedTime();
+}
+
+uint32_t Application::TotalCoolerPoints() const {
+  return coolerPwmRelay->TotalActivatedTime();
+}

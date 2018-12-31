@@ -62,6 +62,9 @@ void ConnectWifi();
 void mqttMessageReceived(String &topic, String &payload);
 void InitUI();
 
+bool WifiStateMachine();
+void ConnectMqttClient();
+
 void setup() {
   const bool initLCD = true;
   const bool initSD = false;
@@ -143,10 +146,28 @@ char stringBuffer[stringBufferSize];
 
 Application::States lastRegulationState = Application::States::Idle;
 
-void loop() {
+bool wifiOK = false;
+bool mqttOk = false;
 
+void loop() {
   M5.update();
-  mqtt.loop();
+  bool wifiConnected = WifiStateMachine();
+  if(wifiConnected) {
+    bool mqttConnected = mqtt.connected();
+
+    if (!mqttConnected) {
+      if (loopCount % 500 == 0) {
+        ConnectMqttClient();
+      }
+    }
+
+    if (mqttConnected) {
+      if (!mqtt.loop()) {
+        mqtt.disconnect();
+      }
+    }
+  }
+
   app->Update();
 /*
   if(!ntpSync) {
@@ -155,7 +176,7 @@ void loop() {
     }
   }
 */
-#if 1
+
   if((loopCount % 50) == 0) {
     auto fridgeValue = app->FridgeTemperature();
     snprintf(stringBuffer, stringBufferSize, "%.2f%s", fridgeValue, temperatureSymbole);
@@ -221,31 +242,31 @@ void loop() {
     snprintf(stringBuffer, stringBufferSize, "%f", coolerPidValues.D);
     mqtt.publish(topic_coolerKdValue, stringBuffer);
 
-  auto heaterPidValues = app->HeaterPidValues();
-  snprintf(stringBuffer, stringBufferSize, "%f", heaterPidValues.P);
-  mqtt.publish(topic_heaterKpValue, stringBuffer);
+    auto heaterPidValues = app->HeaterPidValues();
+    snprintf(stringBuffer, stringBufferSize, "%f", heaterPidValues.P);
+    mqtt.publish(topic_heaterKpValue, stringBuffer);
 
-  snprintf(stringBuffer, stringBufferSize, "%f", heaterPidValues.I);
-  mqtt.publish(topic_heaterKiValue, stringBuffer);
+    snprintf(stringBuffer, stringBufferSize, "%f", heaterPidValues.I);
+    mqtt.publish(topic_heaterKiValue, stringBuffer);
 
-  snprintf(stringBuffer, stringBufferSize, "%f", heaterPidValues.D);
-  mqtt.publish(topic_heaterKdValue, stringBuffer);
+    snprintf(stringBuffer, stringBufferSize, "%f", heaterPidValues.D);
+    mqtt.publish(topic_heaterKdValue, stringBuffer);
 
 
-  auto beerToFridgePidValues = app->BeerToFridgePidValues();
-  snprintf(stringBuffer, stringBufferSize, "%f", beerToFridgePidValues.P);
-  mqtt.publish(topic_beerToFridgeKpValue, stringBuffer);
+    auto beerToFridgePidValues = app->BeerToFridgePidValues();
+    snprintf(stringBuffer, stringBufferSize, "%f", beerToFridgePidValues.P);
+    mqtt.publish(topic_beerToFridgeKpValue, stringBuffer);
 
-  snprintf(stringBuffer, stringBufferSize, "%f", beerToFridgePidValues.I);
-  mqtt.publish(topic_beerToFridgeKiValue, stringBuffer);
+    snprintf(stringBuffer, stringBufferSize, "%f", beerToFridgePidValues.I);
+    mqtt.publish(topic_beerToFridgeKiValue, stringBuffer);
 
-  snprintf(stringBuffer, stringBufferSize, "%f", beerToFridgePidValues.D);
-  mqtt.publish(topic_beerToFridgeKdValue, stringBuffer);
+    snprintf(stringBuffer, stringBufferSize, "%f", beerToFridgePidValues.D);
+    mqtt.publish(topic_beerToFridgeKdValue, stringBuffer);
 
-  if(lastRegulationState != app->RegulationState()) {
-    snprintf(stringBuffer, stringBufferSize, "%s", app->RegulationStateToString(app->RegulationState()).c_str());
-    mqtt.publish(topic_regulationState, stringBuffer, true, 0);
-  }
+    if(lastRegulationState != app->RegulationState()) {
+      snprintf(stringBuffer, stringBufferSize, "%s", app->RegulationStateToString(app->RegulationState()).c_str());
+      mqtt.publish(topic_regulationState, stringBuffer, true, 0);
+    }
 
     snprintf(stringBuffer, stringBufferSize, "%d", app->TotalHeaterPoints());
     mqtt.publish(topic_heaterPoints, stringBuffer);
@@ -254,9 +275,9 @@ void loop() {
     mqtt.publish(topic_coolerPoints, stringBuffer);
 
 
-  if(!button5->AreControlsEnabled()) {
-    button5->SetText(app->RegulationStateToString(app->RegulationState()));
-  }
+    if(!button5->AreControlsEnabled()) {
+      button5->SetText(app->RegulationStateToString(app->RegulationState()));
+    }
 
     uptimeHours = millis() / (60*60000);
     topBar->SetUptime(uptimeHours);
@@ -264,19 +285,25 @@ void loop() {
     snprintf(stringBuffer, stringBufferSize, "%02d:%02d:%02d", timeClient.getHours(), timeClient.getMinutes(), timeClient.getSeconds());
     topBar->SetDateTime(stringBuffer);
   }
-#endif
+
   if((loopCount % 100) == 0) {
-    auto rssi =WiFi.RSSI();
-    if(rssi >= -55) {
-      topBar->SetWifiStatus(StatusBar::WifiStatuses::Full);
-    } else if(rssi >= -75) {
-      topBar->SetWifiStatus(StatusBar::WifiStatuses::Medium);
-    } else if(rssi >= -85) {
-      topBar->SetWifiStatus(StatusBar::WifiStatuses::Weak);
-    } else {
+    if (WiFi.status() == WL_CONNECTED) {
+      auto rssi = WiFi.RSSI();
+      if (rssi >= -55) {
+        topBar->SetWifiStatus(StatusBar::WifiStatuses::Full);
+      } else if (rssi >= -75) {
+        topBar->SetWifiStatus(StatusBar::WifiStatuses::Medium);
+      } else if (rssi >= -85) {
+        topBar->SetWifiStatus(StatusBar::WifiStatuses::Weak);
+      } else {
+        topBar->SetWifiStatus(StatusBar::WifiStatuses::No_signal);
+      }
+    }
+    else {
       topBar->SetWifiStatus(StatusBar::WifiStatuses::No_signal);
     }
   }
+
 
   if(M5.BtnA.wasPressed()) {
     focus->OnButtonAPressed();
@@ -307,51 +334,73 @@ void loop() {
   delay(10);
 }
 
-void ConnectWifi() {
-  WiFi.mode(WIFI_MODE_STA);
-  WiFi.disconnect();
-
-  WiFi.begin("Zataboy-2.4Ghz", "WWJNRZQV");
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
+bool WifiStateMachine() {
+  static bool isConnecting = false;
+  bool ret = false;
+  switch (WiFi.status()) {
+    case WL_CONNECTED:
+      if (isConnecting) {
+        Serial.println("Wifi connection established");
+      }
+      isConnecting = false;
+      ret = true;
+      wifiOK = true;
+      break;
+    case WL_IDLE_STATUS:
+      break;
+    case WL_NO_SSID_AVAIL:
+    case WL_CONNECT_FAILED:
+    case WL_DISCONNECTED:
+      wifiOK = false;
+      if (!isConnecting) {
+        ConnectWifi();
+        isConnecting = true;
+        Serial.println("Connecting to Wifi...");
+      }
+    default:
+      break;
   }
+  return ret;
+}
 
+void ConnectMqttClient() {
   Serial.println("Connecting to MQTT");
   mqtt.begin("192.168.1.109", net);
-  while (!mqtt.connect("ESP32", "try", "try")) {
-    Serial.print(".");
-    delay(1000);
+  if (mqtt.connect("JFBREW")) {
+    mqtt.setWill(topic_regulationState, app->RegulationStateToString(Application::States::Error).c_str(), true, 0);
+
+    mqtt.subscribe(topic_coolerCommand);
+    mqtt.subscribe(topic_heaterCommand);
+    mqtt.subscribe(topic_fanCommand);
+
+    mqtt.subscribe(topic_heaterPwmCommand);
+    mqtt.subscribe(topic_coolerPwmCommand);
+    mqtt.subscribe(topic_heaterPwmConsign);
+    mqtt.subscribe(topic_coolerPwmConsign);
+
+    if (config.IsTemperatureSensorStubbed()) {
+      mqtt.subscribe(topic_temperatureFridgeStub);
+      mqtt.subscribe(topic_temperatureBeerStub);
+      mqtt.subscribe(topic_temperatureRoomStub);
+    }
+
+    mqtt.subscribe(topic_beerSetPoint);
+    mqtt.subscribe(topic_heaterKp);
+    mqtt.subscribe(topic_heaterKi);
+    mqtt.subscribe(topic_heaterKd);
+    mqtt.subscribe(topic_coolerKp);
+    mqtt.subscribe(topic_coolerKi);
+    mqtt.subscribe(topic_coolerKd);
+    mqtt.subscribe(topic_resetPid);
+
+    mqtt.onMessage(mqttMessageReceived);
+    Serial.println("Connected to MQTT");
   }
+}
 
-  mqtt.setWill(topic_regulationState, app->RegulationStateToString(Application::States::Error).c_str(), true, 0);
-
-  mqtt.subscribe(topic_coolerCommand);
-  mqtt.subscribe(topic_heaterCommand);
-  mqtt.subscribe(topic_fanCommand);
-
-  mqtt.subscribe(topic_heaterPwmCommand);
-  mqtt.subscribe(topic_coolerPwmCommand);
-  mqtt.subscribe(topic_heaterPwmConsign);
-  mqtt.subscribe(topic_coolerPwmConsign);
-
-  if(config.IsTemperatureSensorStubbed()) {
-    mqtt.subscribe(topic_temperatureFridgeStub);
-    mqtt.subscribe(topic_temperatureBeerStub);
-    mqtt.subscribe(topic_temperatureRoomStub);
-  }
-
-  mqtt.subscribe(topic_beerSetPoint);
-  mqtt.subscribe(topic_heaterKp);
-  mqtt.subscribe(topic_heaterKi);
-  mqtt.subscribe(topic_heaterKd);
-  mqtt.subscribe(topic_coolerKp);
-  mqtt.subscribe(topic_coolerKi);
-  mqtt.subscribe(topic_coolerKd);
-  mqtt.subscribe(topic_resetPid);
-
-  mqtt.onMessage(mqttMessageReceived);
-  Serial.println("OK");
-
+void ConnectWifi() {
+  WiFi.mode(WIFI_MODE_STA);
+  WiFi.begin("Zataboy-2.4Ghz", "WWJNRZQV");
 }
 
 void InitUI() {
@@ -474,7 +523,7 @@ void InitUI() {
   button4->SetApplyCallback([&setPoint](UpDownButton* w) {
     app->BeerSetPoint(setPoint);
     snprintf(stringBuffer, stringBufferSize, "%.1f", setPoint);
-    mqtt.publish(topic_beerSetPointValue, stringBuffer, true, 0);
+    if(wifiOK) mqtt.publish(topic_beerSetPointValue, stringBuffer, true, 0);
     return false;
   });
 

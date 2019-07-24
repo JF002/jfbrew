@@ -148,6 +148,7 @@ namespace Codingfield {
         bool TemperatureSensorsSanityCheck();
         bool AreTemperatureSensorsReady();
         void ProcessRegulation();
+        void PrintAddr(uint8_t* addr);
     };
 
 

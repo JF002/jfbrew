@@ -76,17 +76,26 @@ void Application::InitHW() {
     tempSensorBus = new Temperature::DS18B20Bus(temperatureSensors);
 
     uint8_t addr[8];
-    auto tempSensorAddr = temperatureSensors->getAddress(addr, 0);
-    fridgeTempSensor = new Sensors::Temperature::DS18B20(temperatureSensors, 0, addr);
-    tempSensorBus->Add(static_cast<Sensors::Temperature::DS18B20*>(fridgeTempSensor));
+    for(int i = 0; i < 3; i++) {
+      auto tempSensorAddr = temperatureSensors->getAddress(addr, i);
+      //PrintAddr(addr);
 
-    tempSensorAddr = temperatureSensors->getAddress(addr, 1);
-    beerTempSensor = new Sensors::Temperature::DS18B20(temperatureSensors,1, addr);
-    tempSensorBus->Add(static_cast<Sensors::Temperature::DS18B20*>(beerTempSensor));
-
-    tempSensorAddr = temperatureSensors->getAddress(addr, 2);
-    roomTempSensor = new Sensors::Temperature::DS18B20(temperatureSensors, 2, addr);
-    tempSensorBus->Add(static_cast<Sensors::Temperature::DS18B20*>(roomTempSensor));
+      if(addr[0] == 40 && addr[1] == 200 && addr[2] == 191 && addr[3] == 127 &&
+         addr[4] == 8 &&  addr[5] == 0 &&   addr[6] == 0 &&   addr[7] == 23) {
+          fridgeTempSensor = new Sensors::Temperature::DS18B20(temperatureSensors, 0, addr);
+          tempSensorBus->Add(static_cast<Sensors::Temperature::DS18B20*>(fridgeTempSensor));
+          //Serial.println("FRIDGE");
+      } else if (addr[0] == 40 && addr[1] == 212 && addr[2] == 11 && addr[3] == 4 &&
+           addr[4] == 9 &&  addr[5] == 0 &&   addr[6] == 0 &&   addr[7] == 246) {
+            roomTempSensor = new Sensors::Temperature::DS18B20(temperatureSensors, 2, addr);
+            tempSensorBus->Add(static_cast<Sensors::Temperature::DS18B20*>(roomTempSensor));
+          //Serial.println("ROOM");
+      } else {
+          beerTempSensor = new Sensors::Temperature::DS18B20(temperatureSensors,1, addr);
+          tempSensorBus->Add(static_cast<Sensors::Temperature::DS18B20*>(beerTempSensor));
+          //Serial.println("BEER");
+      }
+    }
   }
 
   coolerPwmRelay = new Actuators::PwmRelay(coolerRelay, Relays::States::Open, Relays::States::Closed);
@@ -113,6 +122,15 @@ void Application::InitHW() {
   beerToFridgePid->setMaxIOutput(1.0);
 
 
+}
+
+void Application::PrintAddr(uint8_t* addr) {
+    Serial.print("Address : ");
+    for(int i = 0; i < 8; i++) {
+        Serial.print(addr[i]);
+        Serial.print(" ");
+    }
+    Serial.println("");
 }
 
 float Application::FridgeTemperature() const {
